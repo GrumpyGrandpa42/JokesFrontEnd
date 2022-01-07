@@ -39,7 +39,20 @@ namespace JokesRESTv6.Controllers
 
             return jokes;
         }
-    
+        // GET api/<JokesController>/Search/
+        [HttpGet("Search/{searchtext}")]
+        public  IEnumerable<Jokes> Get(string searchtext)
+        {
+
+
+            var jokes = _context.Jokes.Where(j => j.Question.Contains(searchtext)).ToArray();
+            if (jokes == null)
+            {
+                return null;
+            }
+
+            return jokes;
+        }
 
         // POST api/<JokesController>
         [HttpPost]
