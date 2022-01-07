@@ -17,3 +17,13 @@ body {
   margin-bottom: 60px;
 
 }
+
+.bottom-button {
+    margin-top: 60px;
+
+
+}
+.bottom-link {
+    margin-top: 60px;
+    vertical-align: bottom;
+}
