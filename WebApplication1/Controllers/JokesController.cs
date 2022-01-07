@@ -190,8 +190,12 @@ namespace WebApplication1.Controllers
                 return NotFound();
             }
 
-            var jokes = await _context.Jokes
-                .FirstOrDefaultAsync(m => m.Id == id);
+            string apiloc = "api/Jokes/" + id;
+
+            var gettask = client.GetFromJsonAsync<Jokes>(apiloc);
+            gettask.Wait();
+
+            Jokes jokes = gettask.Result;
             if (jokes == null)
             {
                 return NotFound();
@@ -206,10 +210,19 @@ namespace WebApplication1.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var jokes = await _context.Jokes.FindAsync(id);
-            _context.Jokes.Remove(jokes);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            string apiloc = "api/Jokes/" + id;
+            //HTTP Post
+            var delTask = client.DeleteAsync(apiloc);
+            delTask.Wait();
+
+            var result = delTask.Result;
+            if (result.IsSuccessStatusCode)
+            {
+                return RedirectToAction("Index");
+            }
+            ModelState.AddModelError(string.Empty, "Server Error. Please contact administrator.");
+
+            return View();
         }
 
         private bool JokesExists(int id)
