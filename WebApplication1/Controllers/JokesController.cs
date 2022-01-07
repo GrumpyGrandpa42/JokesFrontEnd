@@ -59,7 +59,23 @@ namespace WebApplication1.Controllers
         // GET: Jokes Search Results
         public async Task<IActionResult> ShowSearchResults(String SearchText)
         {
-            return View("Index", await _context.Jokes.Where(j => j.Question.Contains(SearchText)).ToListAsync());
+            string apiloc = "api/Jokes/Search/" + SearchText;
+            List<Jokes> jokes = new List<Jokes>();
+
+            client.DefaultRequestHeaders.Clear();
+            //Define request data format
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            //Sending request to find web api REST service resource Jokes using HttpClient
+            HttpResponseMessage Res = await client.GetAsync(apiloc);
+            //Checking the response is successful or not which is sent using HttpClient
+            if (Res.IsSuccessStatusCode)
+            {
+                //Storing the response details recieved from web api
+                var EmpResponse = Res.Content.ReadAsStringAsync().Result;
+                //Deserializing the response recieved from web api and storing into the joke list
+                jokes = JsonConvert.DeserializeObject<List<Jokes>>(EmpResponse);
+            }
+            return View("Index", jokes);
         }
         // GET: Jokes/Details/5
         public async Task<IActionResult> Details(int? id)
