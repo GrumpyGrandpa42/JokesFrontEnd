@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -8,22 +10,44 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
 using WebApplication1.Models;
+using Newtonsoft.Json;
 
 namespace WebApplication1.Controllers
 {
     public class JokesController : Controller
     {
         private readonly ApplicationDbContext _context;
-
+        private const string URL = "https://localhost:7036/";
+        private string urlParameters;
+        private HttpClient client = new HttpClient();
         public JokesController(ApplicationDbContext context)
         {
             _context = context;
+
+            
+            client.BaseAddress = new Uri(URL);
+           
         }
 
         // GET: Jokes
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Jokes.ToListAsync());
+            List<Jokes> jokes = new List<Jokes>();
+
+            client.DefaultRequestHeaders.Clear();
+            //Define request data format
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            //Sending request to find web api REST service resource Jokes using HttpClient
+            HttpResponseMessage Res = await client.GetAsync("api/Jokes/");
+            //Checking the response is successful or not which is sent using HttpClient
+            if (Res.IsSuccessStatusCode)
+            {
+                //Storing the response details recieved from web api
+                var EmpResponse = Res.Content.ReadAsStringAsync().Result;
+                //Deserializing the response recieved from web api and storing into the joke list
+                jokes = JsonConvert.DeserializeObject<List<Jokes>>(EmpResponse);
+            }
+            return View(jokes);
         }
 
         // GET: Jokes Search Form
@@ -40,13 +64,17 @@ namespace WebApplication1.Controllers
         // GET: Jokes/Details/5
         public async Task<IActionResult> Details(int? id)
         {
+
+            string apiloc = "api/Jokes/" + id;   
             if (id == null)
             {
                 return NotFound();
             }
+            var gettask = client.GetFromJsonAsync<Jokes>(apiloc);
+            gettask.Wait();
 
-            var jokes = await _context.Jokes
-                .FirstOrDefaultAsync(m => m.Id == id);
+            Jokes jokes = gettask.Result;
+            
             if (jokes == null)
             {
                 return NotFound();
@@ -70,30 +98,38 @@ namespace WebApplication1.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Question,Answer")] Jokes jokes)
         {
-            if (ModelState.IsValid)
+
+            //HTTP Post
+            var postTask = client.PostAsJsonAsync<Jokes>("api/Jokes/", jokes);
+            postTask.Wait();
+
+            var result = postTask.Result;
+            if (result.IsSuccessStatusCode)
             {
-                _context.Add(jokes);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Index");
             }
-            return View(jokes);
+        
+
+        ModelState.AddModelError(string.Empty, "Server Error. Please contact administrator.");
+
+        return View(jokes);
+
+            
         }
 
         // GET: Jokes/Edit/5
         [Authorize]
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            string apiloc = "api/Jokes/" + id;
+            
+            var gettask = client.GetFromJsonAsync<Jokes>(apiloc);
+            gettask.Wait();
 
-            var jokes = await _context.Jokes.FindAsync(id);
-            if (jokes == null)
-            {
-                return NotFound();
-            }
+            Jokes jokes = gettask.Result;
+
             return View(jokes);
+
         }
 
         // POST: Jokes/Edit/5
@@ -104,6 +140,7 @@ namespace WebApplication1.Controllers
         [Authorize]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Question,Answer")] Jokes jokes)
         {
+            string apiloc = "api/Jokes/" + id;
             if (id != jokes.Id)
             {
                 return NotFound();
@@ -111,26 +148,22 @@ namespace WebApplication1.Controllers
 
             if (ModelState.IsValid)
             {
-                try
+                //HTTP Post
+                var postTask = client.PutAsJsonAsync<Jokes>(apiloc, jokes);
+                postTask.Wait();
+
+                var result = postTask.Result;
+                if (result.IsSuccessStatusCode)
                 {
-                    _context.Update(jokes);
-                    await _context.SaveChangesAsync();
+                    return RedirectToAction("Index");
                 }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!JokesExists(jokes.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+
             }
-            return View(jokes);
-        }
+                ModelState.AddModelError(string.Empty, "Server Error. Please contact administrator.");
+
+                return View(jokes);
+            
+            }
 
         // GET: Jokes/Delete/5
         [Authorize]
